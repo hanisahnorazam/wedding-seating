@@ -482,7 +482,7 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
     for (let i=1; i<rows.length; i++) {
       const r = rows[i];
       const t = String((r[tableIdx] || "")).trim();
-      const n = String((r[nameIdx] || "")).trim();
+      const n = String((r[nameIdx] || "")).trim().replace(/\s+/g, " ");
       if (!t || !n) continue;
 
       // normalize VIP spacing
@@ -569,16 +569,56 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
   document.addEventListener("click", () => { if (!isEdit) closeTable(); });
 
   // Global search (all tables)
-  globalSearch.addEventListener("input", () => {
-    const q = globalSearch.value.trim().toLowerCase();
-    if (!q) return;
-    const match = allGuests.find(g => g.name.toLowerCase().includes(q));
-    if (match) {
-      openTable(match.table);
-      tableSearch.value = q;
+ globalSearch.addEventListener("input", () => {
+  const q = globalSearch.value.trim().toLowerCase();
+
+  // If empty, just close popup (optional)
+  if (!q) {
+    closeTable();
+    return;
+  }
+
+  // Find ALL matches (not just the first)
+  const matches = allGuests.filter(g => g.name.toLowerCase().includes(q));
+
+  // If none, show a helpful message in the popup
+  if (matches.length === 0) {
+    popupTitle.textContent = `Search: "${q}"`;
+    popup.classList.add("open");
+    closePopupBtn.style.display = "inline-block";
+    tableSearch.value = "";
+    tableList.innerHTML = `<div class="empty">No guest found. Check spelling in Sheet.</div>`;
+    return;
+  }
+
+  // Show results as a clickable list: tap name -> open their table
+  popupTitle.textContent = `Matches for "${q}"`;
+  popup.classList.add("open");
+  closePopupBtn.style.display = "inline-block";
+  tableSearch.value = "";
+
+  tableList.innerHTML = "";
+  matches.slice(0, 50).forEach(m => {
+    const item = document.createElement("div");
+    item.className = "item";
+    item.textContent = `${m.name}  —  Table ${m.table}`;
+    item.style.cursor = "pointer";
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openTable(m.table);
+      tableSearch.value = m.name;
       tableSearch.dispatchEvent(new Event("input"));
-    }
+    });
+    tableList.appendChild(item);
   });
+
+  if (matches.length > 50) {
+    const more = document.createElement("div");
+    more.className = "empty";
+    more.textContent = `Showing first 50 of ${matches.length} results. Type more letters to narrow.`;
+    tableList.appendChild(more);
+  }
+});
 
   // ======================
   // EDIT MODE: click to set x,y for chosen table
@@ -649,4 +689,5 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
 </body>
 
 </html>
+
 
