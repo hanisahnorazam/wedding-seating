@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wedding Seating Lookup</title>
+  <style>
+    :root { --shadow: 0 12px 28px rgba(0,0,0,.28); }
+
+    body { margin: 0; font-family: Arial, sans-serif; background:#111; color:#fff; }
+    .topbar{
+      position: sticky; top: 0; z-index: 50;
+      background:#111; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.1);
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+    }
+    .topbar .left { display:flex; flex-direction:column; gap:2px; }
+    .topbar b { font-size:14px; }
+    .topbar small { opacity:.8; }
+
+    .globalSearch {
+      width:min(420px, 48vw);
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color:#fff;
+      outline:none;
+    }
+    .globalSearch::placeholder{ color:rgba(255,255,255,.7); }
+
+    .btn {
+      border:0; border-radius:12px; padding:10px 12px; cursor:pointer; font-weight:800;
+    }
+
+    /* Canvas */
+    .wrap { display:flex; justify-content:center; padding:12px; }
+    .canvas {
+      position: relative;
+      width: min(1100px, 100%);
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .canvas img { width: 100%; height: auto; display:block; }
+
+    /* Invisible hotspots */
+    .hotspot {
+      position:absolute;
+      width: 6.4%;
+      aspect-ratio: 1 / 1;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      background: rgba(255,255,255,0); /* invisible */
+      border: 2px solid rgba(255,255,255,0); /* invisible */
+    }
+    /* Optional debug to see hotspots: add ?debug=1 to URL */
+    .debug .hotspot { border-color: rgba(0,200,255,.9); background: rgba(0,200,255,.12); }
+
+    /* Dropdown / popup */
+    .popup {
+      position: fixed;
+      left: 10px; right: 10px;
+      top: 76px;
+      margin: 0 auto;
+      max-width: 520px;
+      background:#fff;
+      color:#111;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      display:none;
+      overflow:hidden;
+      z-index: 9999;
+    }
+    .popup.open { display:block; }
+    .phead{
+      padding:10px 12px;
+      background:#fafafa;
+      border-bottom:1px solid #eee;
+      display:flex; align-items:center; gap:10px;
+    }
+    .phead b { font-size:14px; }
+    .phead .spacer{ flex:1; }
+    .phead button{
+      border:0; border-radius:10px; padding:8px 10px; cursor:pointer; font-weight:800; background:#eee;
+    }
+    .pbody{ padding:10px 12px; }
+    .search{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid #ddd;
+      border-radius:12px;
+      outline:none;
+      font-size:14px;
+      margin-bottom:10px;
+    }
+    .list{
+      max-height: 52vh;
+      overflow:auto;
+      border:1px solid #eee;
+      border-radius: 12px;
+    }
+    .item{
+      padding:10px 12px;
+      border-bottom:1px solid #f2f2f2;
+      font-weight:700;
+    }
+    .item:last-child{ border-bottom:0; }
+    .empty{ padding:12px; color:#666; }
+
+    /* Edit panel */
+    .editPanel{
+      position: fixed;
+      bottom: 10px;
+      left: 10px; right:10px;
+      margin: 0 auto;
+      max-width: 820px;
+      background: rgba(0,0,0,.82);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display:none;
+      z-index: 9999;
+    }
+    .editPanel.open{ display:block; }
+    .editRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .editPanel select, .editPanel input {
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color:#fff;
+      padding: 8px 10px;
+      outline:none;
+    }
+    .codeBox{
+      width:100%;
+      height:120px;
+      margin-top:10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.15);
+      background: rgba(0,0,0,.35);
+      color:#fff;
+      padding:10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="left">
+      <b>Wedding Seating Lookup</b>
+      <small>Tap a table → see the guest list (auto from Google Sheet)</small>
+    </div>
+    <input class="globalSearch" id="globalSearch" placeholder="Search guest name (all tables)..." />
+    <button class="btn" id="closePopupBtn" style="display:none;">Close</button>
+  </div>
+
+  <div class="wrap">
+    <div class="canvas" id="canvas">
+      <img src="layout.jpg" alt="Layout" id="layoutImg" />
+      <!-- hotspots injected here -->
+    </div>
+  </div>
+
+  <div class="popup" id="popup">
+    <div class="phead">
+      <b id="popupTitle">Table</b>
+      <div class="spacer"></div>
+      <button id="popupClose">Close</button>
+    </div>
+    <div class="pbody">
+      <input class="search" id="tableSearch" placeholder="Search within this table..." />
+      <div class="list" id="tableList"></div>
+    </div>
+  </div>
+
+  <div class="editPanel" id="editPanel">
+    <div class="editRow">
+      <b style="color:#fff;">EDIT MODE</b>
+      <span style="opacity:.85;">Click the table position on the image to save x/y.</span>
+      <label style="color:#fff; opacity:.9;">Table:</label>
+      <select id="editSelect"></select>
+      <button class="btn" id="copyBtn">Copy JSON</button>
+      <button class="btn" id="doneBtn">Done</button>
+    </div>
+    <textarea class="codeBox" id="coordsBox" readonly></textarea>
+  </div>
+
+<script>
+  // ======================
+  // 1) Your Google Sheet CSV
+  // ======================
+  const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfxKCWkP3B8EtOiAVp2Ku-kTmfMzgeQ3rtVe4ch-dnhhXDviIMWEFws0fegg8f594XxtRbTPhAHl-y/pub?gid=0&single=true&output=csv";
+
+  // ======================
+  // 2) Hotspot coordinates
+  //    You will set these using EDIT MODE (no guessing).
+  // ======================
+  let HOTSPOTS = [
+    // examples only — you will replace by clicking in edit mode:
+    { id: "30", x: 10, y: 17 },
+    { id: "24", x: 22, y: 17 },
+    { id: "18", x: 34, y: 17 },
+    { id: "13", x: 54, y: 17 },
+    { id: "8",  x: 64, y: 17 },
+    { id: "3",  x: 74, y: 17 },
+    { id: "VIP 1", x: 83, y: 34 },
+    { id: "VIP 2", x: 82, y: 55 }
+  ];
+
+  // Will auto-create 1..35 if not in HOTSPOTS (for edit dropdown convenience)
+  const ALL_IDS = (() => {
+    const ids = [];
+    for (let i=1;i<=35;i++) ids.push(String(i));
+    ids.push("VIP 1","VIP 2");
+    return ids;
+  })();
+
+  // ======================
+  // Utilities
+  // ======================
+  const qs = new URLSearchParams(location.search);
+  const isEdit = qs.get("edit") === "1";
+  const isDebug = qs.get("debug") === "1";
+
+  const canvas = document.getElementById("canvas");
+  const popup = document.getElementById("popup");
+  const popupTitle = document.getElementById("popupTitle");
+  const tableSearch = document.getElementById("tableSearch");
+  const tableList = document.getElementById("tableList");
+  const popupClose = document.getElementById("popupClose");
+  const closePopupBtn = document.getElementById("closePopupBtn");
+  const globalSearch = document.getElementById("globalSearch");
+
+  const editPanel = document.getElementById("editPanel");
+  const editSelect = document.getElementById("editSelect");
+  const coordsBox = document.getElementById("coordsBox");
+  const copyBtn = document.getElementById("copyBtn");
+  const doneBtn = document.getElementById("doneBtn");
+  const layoutImg = document.getElementById("layoutImg");
+
+  if (isDebug) document.body.classList.add("debug");
+  if (isEdit) editPanel.classList.add("open");
+
+  // Data from sheet: map tableId -> [names]
+  let tableToNames = {};
+  // For global search: list of {name, table}
+  let allGuests = [];
+
+  function normalizeHeader(h){ return String(h || "").trim().toLowerCase(); }
+
+  // Minimal CSV parser that supports quoted commas
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i=0; i<text.length; i++) {
+      const ch = text[i];
+      const next = text[i+1];
+
+      if (ch === '"' && inQuotes && next === '"') { // escaped quote
+        cur += '"'; i++;
+      } else if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        row.push(cur); cur = "";
+      } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+        if (ch === '\r' && next === '\n') i++;
+        row.push(cur); cur = "";
+        // skip empty last line
+        if (row.some(c => String(c).trim() !== "")) rows.push(row);
+        row = [];
+      } else {
+        cur += ch;
+      }
+    }
+    // last cell
+    if (cur.length || row.length) {
+      row.push(cur);
+      if (row.some(c => String(c).trim() !== "")) rows.push(row);
+    }
+    return rows;
+  }
+
+  async function loadSheet() {
+    const res = await fetch(CSV_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to load CSV");
+    const text = await res.text();
+
+    const rows = parseCSV(text);
+    if (!rows.length) return;
+
+    const headers = rows[0].map(normalizeHeader);
+    const tableIdx = headers.findIndex(h => h === "table" || h === "table no" || h === "tableno");
+const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" || h === "name");
+
+    if (tableIdx === -1 || nameIdx === -1) {
+      alert("Your Sheet headers must include: Table and GuestName (or Name).");
+      return;
+    }
+
+    const map = {};
+    const guests = [];
+
+    for (let i=1; i<rows.length; i++) {
+      const r = rows[i];
+      const t = String((r[tableIdx] || "")).trim();
+      const n = String((r[nameIdx] || "")).trim();
+      if (!t || !n) continue;
+
+      // normalize VIP spacing
+      const tableId = t.replace(/\s+/g, " ").toUpperCase().startsWith("VIP")
+        ? t.replace(/\s+/g, " ").toUpperCase().replace("VIP", "VIP ").replace(/\s+/g, " ").trim()
+        : t;
+
+      if (!map[tableId]) map[tableId] = [];
+      map[tableId].push(n);
+      guests.push({ name: n, table: tableId });
+    }
+
+    // sort names for nicer list
+    Object.keys(map).forEach(k => map[k].sort((a,b) => a.localeCompare(b)));
+    guests.sort((a,b) => a.name.localeCompare(b.name));
+
+    tableToNames = map;
+    allGuests = guests;
+  }
+
+  function buildHotspots() {
+    // Remove old
+    canvas.querySelectorAll(".hotspot").forEach(el => el.remove());
+
+    HOTSPOTS.forEach(h => {
+      const el = document.createElement("div");
+      el.className = "hotspot";
+      el.style.left = h.x + "%";
+      el.style.top  = h.y + "%";
+      el.dataset.id = h.id;
+
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openTable(h.id);
+      });
+
+      canvas.appendChild(el);
+    });
+  }
+
+  function openTable(id) {
+    const names = tableToNames[id] || [];
+    popupTitle.textContent = `Table ${id}`;
+    popup.classList.add("open");
+    closePopupBtn.style.display = "inline-block";
+    tableSearch.value = "";
+    renderTableList(names);
+    tableSearch.focus();
+  }
+
+  function closeTable() {
+    popup.classList.remove("open");
+    closePopupBtn.style.display = "none";
+  }
+
+  function renderTableList(names) {
+    tableList.innerHTML = "";
+    if (!names.length) {
+      const div = document.createElement("div");
+      div.className = "empty";
+      div.textContent = "No guests found for this table (check your Sheet).";
+      tableList.appendChild(div);
+      return;
+    }
+    names.forEach(n => {
+      const item = document.createElement("div");
+      item.className = "item";
+      item.textContent = n;
+      tableList.appendChild(item);
+    });
+  }
+
+  // Filter inside table
+  tableSearch.addEventListener("input", () => {
+    const title = popupTitle.textContent.replace("Table ", "");
+    const names = tableToNames[title] || [];
+    const q = tableSearch.value.trim().toLowerCase();
+    const filtered = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+    renderTableList(filtered);
+  });
+
+  popupClose.addEventListener("click", closeTable);
+  closePopupBtn.addEventListener("click", closeTable);
+  document.addEventListener("click", () => { if (!isEdit) closeTable(); });
+
+  // Global search (all tables)
+  globalSearch.addEventListener("input", () => {
+    const q = globalSearch.value.trim().toLowerCase();
+    if (!q) return;
+    const match = allGuests.find(g => g.name.toLowerCase().includes(q));
+    if (match) {
+      openTable(match.table);
+      tableSearch.value = q;
+      tableSearch.dispatchEvent(new Event("input"));
+    }
+  });
+
+  // ======================
+  // EDIT MODE: click to set x,y for chosen table
+  // ======================
+  function updateCoordsBox() {
+    coordsBox.value = JSON.stringify(HOTSPOTS, null, 2);
+  }
+
+  function ensureEditOptions() {
+    editSelect.innerHTML = "";
+    ALL_IDS.forEach(id => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      editSelect.appendChild(opt);
+    });
+    updateCoordsBox();
+  }
+
+  function setHotspot(id, x, y) {
+    const idx = HOTSPOTS.findIndex(h => h.id === id);
+    if (idx >= 0) HOTSPOTS[idx] = { id, x, y };
+    else HOTSPOTS.push({ id, x, y });
+    buildHotspots();
+    updateCoordsBox();
+  }
+
+  if (isEdit) {
+    ensureEditOptions();
+
+    // click on image area to set coordinate
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      const id = editSelect.value;
+      setHotspot(id, +x.toFixed(2), +y.toFixed(2));
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(coordsBox.value);
+        alert("Copied HOTSPOTS JSON. Paste it into HOTSPOTS in index.html.");
+      } catch {
+        alert("Copy failed. You can manually select and copy from the box.");
+      }
+    });
+
+    doneBtn.addEventListener("click", () => {
+      alert("To exit edit mode, remove ?edit=1 from the URL.");
+    });
+  }
+
+  // ======================
+  // Boot
+  // ======================
+  (async function start(){
+    try {
+      await loadSheet();
+    } catch (e) {
+      alert("Could not load Google Sheet CSV. Please check your link and internet.");
+    }
+    buildHotspots();
+    if (isEdit) updateCoordsBox();
+  })();
+</script>
+
+</body>
+</html>
