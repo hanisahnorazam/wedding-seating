@@ -460,7 +460,7 @@
   }
 
   async function loadSheet() {
-    const res = await fetch(CSV_URL, { cache: "no-store" });
+    const res = await fetch(`${CSV_URL}&_ts=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to load CSV");
     const text = await res.text();
 
@@ -495,12 +495,9 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
       guests.push({ name: n, table: tableId });
     }
 
-    // sort names for nicer list
-    Object.keys(map).forEach(k => map[k].sort((a,b) => a.localeCompare(b)));
-    guests.sort((a,b) => a.name.localeCompare(b.name));
-
-    tableToNames = map;
-    allGuests = guests;
+    // Keep original Google Sheet order
+      tableToNames = map;
+      allGuests = guests;
   }
 
   function buildHotspots() {
@@ -676,18 +673,51 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
   // Boot
   // ======================
   (async function start(){
+  try {
+    await loadSheet();
+  } catch (e) {
+    alert("Could not load Google Sheet CSV. Please check your link and internet.");
+  }
+
+  buildHotspots();
+  if (isEdit) updateCoordsBox();
+
+  // Auto-refresh guest data every 15 seconds
+  setInterval(async () => {
     try {
       await loadSheet();
+
+      // If popup is open, refresh the currently shown content too
+      if (popup.classList.contains("open")) {
+        const currentTitle = popupTitle.textContent
+          .replace("Table ", "")
+          .replace(/^Matches for ".*"$/, "")
+          .trim();
+
+        // If currently showing a table
+        if (tableToNames[currentTitle]) {
+          const q = tableSearch.value.trim().toLowerCase();
+          const names = tableToNames[currentTitle] || [];
+          const filtered = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+          renderTableList(filtered);
+        }
+
+        // If user is typing in global search, refresh those results too
+        const gq = globalSearch.value.trim().toLowerCase();
+        if (gq) {
+          globalSearch.dispatchEvent(new Event("input"));
+        }
+      }
     } catch (e) {
-      alert("Could not load Google Sheet CSV. Please check your link and internet.");
+      console.log("Auto-refresh failed", e);
     }
-    buildHotspots();
-    if (isEdit) updateCoordsBox();
-  })();
+  }, 15000);
+})();
 </script>
 
 </body>
 
 </html>
+
 
 
