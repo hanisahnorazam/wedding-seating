@@ -46,15 +46,31 @@
 
     /* Invisible hotspots */
     .hotspot {
-      position:absolute;
-      width: 6.4%;
-      aspect-ratio: 1 / 1;
-      border-radius: 999px;
-      transform: translate(-50%, -50%);
-      cursor: pointer;
-      background: rgba(255,255,255,0); /* invisible */
-      border: 2px solid rgba(255,255,255,0); /* invisible */
-    }
+  position:absolute;
+  width: 6.4%;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  background: rgba(255,255,255,0);
+  border: 3px solid rgba(255,255,255,0);
+  transition: 0.2s ease;
+}
+
+/* Table status colors */
+.hotspot.empty {
+  border-color: rgba(255,255,255,0);
+}
+
+.hotspot.partial {
+  border-color: rgba(255, 193, 7, 0.95); /* yellow */
+  background: rgba(255, 193, 7, 0.18);
+}
+
+.hotspot.full {
+  border-color: rgba(40, 167, 69, 0.95); /* green */
+  background: rgba(40, 167, 69, 0.22);
+}
     /* Optional debug to see hotspots: add ?debug=1 to URL */
     .debug .hotspot { border-color: rgba(0,200,255,.9); background: rgba(0,200,255,.12); }
 
@@ -501,34 +517,45 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
   }
 
   function buildHotspots() {
-    // Remove old
-    canvas.querySelectorAll(".hotspot").forEach(el => el.remove());
+  // Remove old
+  canvas.querySelectorAll(".hotspot").forEach(el => el.remove());
 
-    HOTSPOTS.forEach(h => {
-      const el = document.createElement("div");
-      el.className = "hotspot";
-      el.style.left = h.x + "%";
-      el.style.top  = h.y + "%";
-      el.dataset.id = h.id;
+  HOTSPOTS.forEach(h => {
+    const el = document.createElement("div");
+    el.className = "hotspot";
+    el.style.left = h.x + "%";
+    el.style.top  = h.y + "%";
+    el.dataset.id = h.id;
 
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openTable(h.id);
-      });
+    const guestCount = (tableToNames[h.id] || []).length;
 
-      canvas.appendChild(el);
+    if (guestCount >= 10) {
+      el.classList.add("full");
+    } else if (guestCount > 0) {
+      el.classList.add("partial");
+    } else {
+      el.classList.add("empty");
+    }
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openTable(h.id);
     });
-  }
+
+    canvas.appendChild(el);
+  });
+}
 
   function openTable(id) {
-    const names = tableToNames[id] || [];
-    popupTitle.textContent = `Table ${id}`;
-    popup.classList.add("open");
-    closePopupBtn.style.display = "inline-block";
-    tableSearch.value = "";
-    renderTableList(names);
-    tableSearch.focus();
-  }
+  const names = tableToNames[id] || [];
+  const count = names.length;
+  popupTitle.textContent = `Table ${id} (${count} / 10 pax)`;
+  popup.classList.add("open");
+  closePopupBtn.style.display = "inline-block";
+  tableSearch.value = "";
+  renderTableList(names);
+  tableSearch.focus();
+}
 
   function closeTable() {
     popup.classList.remove("open");
@@ -713,11 +740,44 @@ const nameIdx  = headers.findIndex(h => h === "guestname" || h === "guest name" 
     }
   }, 15000);
 })();
+
+  // Auto-refresh guest data every 15 seconds
+  setInterval(async () => {
+    try {
+      await loadSheet();
+
+      // If popup is open, refresh the currently shown content too
+      if (popup.classList.contains("open")) {
+        const currentTitle = popupTitle.textContent
+          .replace("Table ", "")
+          .replace(/^Matches for ".*"$/, "")
+          .trim();
+
+        // If currently showing a table
+        if (tableToNames[currentTitle]) {
+          const q = tableSearch.value.trim().toLowerCase();
+          const names = tableToNames[currentTitle] || [];
+          const filtered = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+          renderTableList(filtered);
+        }
+
+        // If user is typing in global search, refresh those results too
+        const gq = globalSearch.value.trim().toLowerCase();
+        if (gq) {
+          globalSearch.dispatchEvent(new Event("input"));
+        }
+      }
+    } catch (e) {
+      console.log("Auto-refresh failed", e);
+    }
+  }, 15000);
+})();
 </script>
 
 </body>
 
 </html>
+
 
 
 
