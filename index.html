@@ -7,7 +7,9 @@
 
   <style>
     :root { --shadow: 0 12px 28px rgba(0,0,0,.28); }
-
+    .editing .hotspot {
+  pointer-events: none;
+}
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -604,7 +606,10 @@
     const toggleEdit = document.getElementById("toggleEdit");
 
     if (isDebug) document.body.classList.add("debug");
-    if (isEdit) editPanel.classList.add("open");
+    if (isEdit) {
+  editPanel.classList.add("open");
+  document.body.classList.add("editing");
+}
 
     toggleEdit?.addEventListener("click", () => {
       editPanel.classList.toggle("minimized");
