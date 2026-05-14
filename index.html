@@ -392,8 +392,7 @@
       { "id": "35", "x": 12.09, "y": 87.43 }
     ];
 
-    const LANDSCAPE_HOTSPOTS = HOTSPOTS;
-
+    
     let PORTRAIT_HOTSPOTS = [
   {
     "id": "VIP 1",
@@ -577,8 +576,8 @@
     }
 
     function getCurrentHotspots() {
-      return isMobileLayout() ? PORTRAIT_HOTSPOTS : LANDSCAPE_HOTSPOTS;
-    }
+  return isMobileLayout() ? PORTRAIT_HOTSPOTS : HOTSPOTS;
+}
 
     const ALL_IDS = [
       "VIP 1","VIP 2","3","4","5","6","7","8","9","10","11","12",
