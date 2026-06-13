@@ -7,9 +7,11 @@
 
   <style>
     :root { --shadow: 0 12px 28px rgba(0,0,0,.28); }
+
     .editing .hotspot {
-  pointer-events: none;
-}
+      pointer-events: none;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -190,10 +192,19 @@
       padding:10px 12px;
       border-bottom:1px solid #f2f2f2;
       font-weight:700;
+      user-select: none;
+    }
+
+    .item:hover {
+      background: #f7f7f7;
     }
 
     .item:last-child{
       border-bottom:0;
+    }
+
+    .item.checked {
+      opacity: 0.55;
     }
 
     .empty{
@@ -250,15 +261,16 @@
     }
 
     #editSelect {
-  min-width: 120px;
-  color: #fff;
-  background: rgba(255,255,255,.08);
-}
+      min-width: 120px;
+      color: #fff;
+      background: rgba(255,255,255,.08);
+    }
 
-#editSelect option {
-  color: #111;
-  background: #fff;
-}
+    #editSelect option {
+      color: #111;
+      background: #fff;
+    }
+
     .codeBox{
       width:100%;
       height:120px;
@@ -312,7 +324,7 @@
   <div class="topbar">
     <div class="left">
       <b>Wedding Seating Lookup</b>
-      <small>Tap a table → see the guest list (auto from Google Sheet)</small>
+      <small>Tap a table → see the guest list. Tap a guest → check in.</small>
     </div>
     <input class="globalSearch" id="globalSearch" placeholder="Search guest name..." />
     <button class="btn" id="closePopupBtn" style="display:none;">Close</button>
@@ -352,463 +364,102 @@
   </div>
 
   <script>
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRfxKCWkP3B8EtOiAVp2Ku-kTmfMzgeQ3rtVe4ch-dnhhXDviIMWEFws0fegg8f594XxtRbTPhAHl-y/pub?gid=0&single=true&output=csv";
+    const WEB_APP_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnS_J6sgc70EcDaAASKLdjCUaduRCiO3XnEz2x9iJLKqu6snvXc0Fq-gLns5X8LrHnvse4ZPyIW51W69j6wJwcJ7FiK7RPtbHfUeSX4DjDaFCWu42DilVzmcu2fs6oMhOsdTzj5i3SCEynNpYwi6bbD_yqz0Dycs3yXdbq9NpmFbRkPvPjjeG11oPDvADm68XwruuW1CLVxUfc96dUdHIdfkgFZSPra1tVvAdx7SHp4TnkcDQMM_E6Jbu5cKHweNREyP7D59_Eag_AwAvY46uhATNgGpJg&lib=MptAV0cB-mB9OFz2mSkrDw8rfgyDgMo2-";
 
     let HOTSPOTS = [
-  {
-    "id": "30",
-    "x": 24.06,
-    "y": 14.65
-  },
-  {
-    "id": "24",
-    "x": 32.76,
-    "y": 14.6
-  },
-  {
-    "id": "18",
-    "x": 42.42,
-    "y": 14.81
-  },
-  {
-    "id": "13",
-    "x": 54.61,
-    "y": 18.86
-  },
-  {
-    "id": "8",
-    "x": 63.24,
-    "y": 20.31
-  },
-  {
-    "id": "3",
-    "x": 71.97,
-    "y": 18.86
-  },
-  {
-    "id": "VIP 1",
-    "x": 81.24,
-    "y": 28.07
-  },
-  {
-    "id": "VIP 2",
-    "x": 80.79,
-    "y": 65.24
-  },
-  {
-    "id": "4",
-    "x": 72.06,
-    "y": 35.5
-  },
-  {
-    "id": "5",
-    "x": 72.15,
-    "y": 59.74
-  },
-  {
-    "id": "6",
-    "x": 71.79,
-    "y": 74.61
-  },
-  {
-    "id": "7",
-    "x": 72.24,
-    "y": 87.87
-  },
-  {
-    "id": "9",
-    "x": 64.06,
-    "y": 35.66
-  },
-  {
-    "id": "10",
-    "x": 62.24,
-    "y": 59.1
-  },
-  {
-    "id": "11",
-    "x": 62.88,
-    "y": 74.45
-  },
-  {
-    "id": "12",
-    "x": 62.24,
-    "y": 88.35
-  },
-  {
-    "id": "15",
-    "x": 52.42,
-    "y": 60.23
-  },
-  {
-    "id": "14",
-    "x": 55.06,
-    "y": 35.18
-  },
-  {
-    "id": "16",
-    "x": 52.06,
-    "y": 73.48
-  },
-  {
-    "id": "17",
-    "x": 52.06,
-    "y": 88.35
-  },
-  {
-    "id": "19",
-    "x": 42.24,
-    "y": 28.07
-  },
-  {
-    "id": "20",
-    "x": 41.79,
-    "y": 41.16
-  },
-  {
-    "id": "21",
-    "x": 42.85,
-    "y": 58.72
-  },
-  {
-    "id": "22",
-    "x": 42.06,
-    "y": 73.64
-  },
-  {
-    "id": "23",
-    "x": 42.24,
-    "y": 89
-  },
-  {
-    "id": "25",
-    "x": 32.76,
-    "y": 28.82
-  },
-  {
-    "id": "26",
-    "x": 32.97,
-    "y": 42.29
-  },
-  {
-    "id": "27",
-    "x": 32.97,
-    "y": 59.58
-  },
-  {
-    "id": "28",
-    "x": 33.06,
-    "y": 73.48
-  },
-  {
-    "id": "29",
-    "x": 32.7,
-    "y": 89.32
-  },
-  {
-    "id": "31",
-    "x": 24.06,
-    "y": 28.07
-  },
-  {
-    "id": "32",
-    "x": 24.7,
-    "y": 42.94
-  },
-  {
-    "id": "33",
-    "x": 24.15,
-    "y": 58.94
-  },
-  {
-    "id": "34",
-    "x": 24.06,
-    "y": 72.67
-  },
-  {
-    "id": "35",
-    "x": 24.24,
-    "y": 88.19
-  },
-  {
-    "id": "36",
-    "x": 15.58,
-    "y": 15.73
-  },
-  {
-    "id": "37",
-    "x": 15.61,
-    "y": 28.07
-  },
-  {
-    "id": "38",
-    "x": 15.33,
-    "y": 42.13
-  },
-  {
-    "id": "39",
-    "x": 15.88,
-    "y": 59.91
-  },
-  {
-    "id": "40",
-    "x": 15.7,
-    "y": 73.8
-  },
-  {
-    "id": "41",
-    "x": 15.42,
-    "y": 88.19
-  },
-  {
-    "id": "42",
-    "x": 6.61,
-    "y": 27.58
-  },
-  {
-    "id": "43",
-    "x": 6.79,
-    "y": 42.77
-  },
-  {
-    "id": "44",
-    "x": 6.42,
-    "y": 59.58
-  },
-  {
-    "id": "45",
-    "x": 6.88,
-    "y": 72.19
-  }
-];
+      {"id":"30","x":24.06,"y":14.65},
+      {"id":"24","x":32.76,"y":14.6},
+      {"id":"18","x":42.42,"y":14.81},
+      {"id":"13","x":54.61,"y":18.86},
+      {"id":"8","x":63.24,"y":20.31},
+      {"id":"3","x":71.97,"y":18.86},
+      {"id":"VIP 1","x":81.24,"y":28.07},
+      {"id":"VIP 2","x":80.79,"y":65.24},
+      {"id":"4","x":72.06,"y":35.5},
+      {"id":"5","x":72.15,"y":59.74},
+      {"id":"6","x":71.79,"y":74.61},
+      {"id":"7","x":72.24,"y":87.87},
+      {"id":"9","x":64.06,"y":35.66},
+      {"id":"10","x":62.24,"y":59.1},
+      {"id":"11","x":62.88,"y":74.45},
+      {"id":"12","x":62.24,"y":88.35},
+      {"id":"15","x":52.42,"y":60.23},
+      {"id":"14","x":55.06,"y":35.18},
+      {"id":"16","x":52.06,"y":73.48},
+      {"id":"17","x":52.06,"y":88.35},
+      {"id":"19","x":42.24,"y":28.07},
+      {"id":"20","x":41.79,"y":41.16},
+      {"id":"21","x":42.85,"y":58.72},
+      {"id":"22","x":42.06,"y":73.64},
+      {"id":"23","x":42.24,"y":89},
+      {"id":"25","x":32.76,"y":28.82},
+      {"id":"26","x":32.97,"y":42.29},
+      {"id":"27","x":32.97,"y":59.58},
+      {"id":"28","x":33.06,"y":73.48},
+      {"id":"29","x":32.7,"y":89.32},
+      {"id":"31","x":24.06,"y":28.07},
+      {"id":"32","x":24.7,"y":42.94},
+      {"id":"33","x":24.15,"y":58.94},
+      {"id":"34","x":24.06,"y":72.67},
+      {"id":"35","x":24.24,"y":88.19},
+      {"id":"36","x":15.58,"y":15.73},
+      {"id":"37","x":15.61,"y":28.07},
+      {"id":"38","x":15.33,"y":42.13},
+      {"id":"39","x":15.88,"y":59.91},
+      {"id":"40","x":15.7,"y":73.8},
+      {"id":"41","x":15.42,"y":88.19},
+      {"id":"42","x":6.61,"y":27.58},
+      {"id":"43","x":6.79,"y":42.77},
+      {"id":"44","x":6.42,"y":59.58},
+      {"id":"45","x":6.88,"y":72.19}
+    ];
 
-    
     let PORTRAIT_HOTSPOTS = [
-  {
-    "id": "VIP 1",
-    "x": 29.58,
-    "y": 16.79
-  },
-  {
-    "id": "VIP 2",
-    "x": 73.04,
-    "y": 16.64
-  },
-  {
-    "id": "3",
-    "x": 20.62,
-    "y": 23.86
-  },
-  {
-    "id": "4",
-    "x": 36.58,
-    "y": 24.08
-  },
-  {
-    "id": "5",
-    "x": 61.48,
-    "y": 23.86
-  },
-  {
-    "id": "6",
-    "x": 76.65,
-    "y": 24.3
-  },
-  {
-    "id": "7",
-    "x": 92.22,
-    "y": 24.51
-  },
-  {
-    "id": "8",
-    "x": 19.84,
-    "y": 32.61
-  },
-  {
-    "id": "9",
-    "x": 36.96,
-    "y": 32.61
-  },
-  {
-    "id": "10",
-    "x": 61.09,
-    "y": 33.49
-  },
-  {
-    "id": "11",
-    "x": 77.04,
-    "y": 33.49
-  },
-  {
-    "id": "12",
-    "x": 92.22,
-    "y": 34.36
-  },
-  {
-    "id": "13",
-    "x": 19.84,
-    "y": 40.71
-  },
-  {
-    "id": "14",
-    "x": 37.74,
-    "y": 40.27
-  },
-  {
-    "id": "15",
-    "x": 61.87,
-    "y": 43.56
-  },
-  {
-    "id": "16",
-    "x": 77.04,
-    "y": 43.56
-  },
-  {
-    "id": "17",
-    "x": 91.44,
-    "y": 43.56
-  },
-  {
-    "id": "18",
-    "x": 11.28,
-    "y": 53.63
-  },
-  {
-    "id": "19",
-    "x": 27.63,
-    "y": 53.63
-  },
-  {
-    "id": "20",
-    "x": 41.36,
-    "y": 53.6
-  },
-  {
-    "id": "21",
-    "x": 61.26,
-    "y": 53.45
-  },
-  {
-    "id": "22",
-    "x": 75.1,
-    "y": 53.41
-  },
-  {
-    "id": "23",
-    "x": 91.05,
-    "y": 53.63
-  },
-  {
-    "id": "24",
-    "x": 11.28,
-    "y": 62.6
-  },
-  {
-    "id": "25",
-    "x": 26.85,
-    "y": 62.38
-  },
-  {
-    "id": "26",
-    "x": 41.88,
-    "y": 62.88
-  },
-  {
-    "id": "27",
-    "x": 60.73,
-    "y": 63.02
-  },
-  {
-    "id": "28",
-    "x": 75.92,
-    "y": 62.88
-  },
-  {
-    "id": "29",
-    "x": 91.88,
-    "y": 62.73
-  },
-  {
-    "id": "30",
-    "x": 11.7,
-    "y": 71.11
-  },
-  {
-    "id": "31",
-    "x": 26.79,
-    "y": 71.32
-  },
-  {
-    "id": "32",
-    "x": 42.67,
-    "y": 71.42
-  },
-  {
-    "id": "33",
-    "x": 60.99,
-    "y": 70.83
-  },
-  {
-    "id": "34",
-    "x": 75.39,
-    "y": 70.98
-  },
-  {
-    "id": "35",
-    "x": 91.62,
-    "y": 70.53
-  },
-  {
-    "id": "36",
-    "x": 12.08,
-    "y": 79.39
-  },
-  {
-    "id": "37",
-    "x": 27.55,
-    "y": 78.96
-  },
-  {
-    "id": "38",
-    "x": 42.67,
-    "y": 79.07
-  },
-  {
-    "id": "39",
-    "x": 61.26,
-    "y": 79.81
-  },
-  {
-    "id": "40",
-    "x": 76.18,
-    "y": 79.22
-  },
-  {
-    "id": "41",
-    "x": 91.62,
-    "y": 79.66
-  },
-  {
-    "id": "42",
-    "x": 27.37,
-    "y": 86.75
-  },
-  {
-    "id": "43",
-    "x": 43.73,
-    "y": 86.46
-  },
-  {
-    "id": "44",
-    "x": 59.85,
-    "y": 86.89
-  },
-  {
-    "id": "45",
-    "x": 75.45,
-    "y": 87.04
-  }
+      {"id":"VIP 1","x":29.58,"y":16.79},
+      {"id":"VIP 2","x":73.04,"y":16.64},
+      {"id":"3","x":20.62,"y":23.86},
+      {"id":"4","x":36.58,"y":24.08},
+      {"id":"5","x":61.48,"y":23.86},
+      {"id":"6","x":76.65,"y":24.3},
+      {"id":"7","x":92.22,"y":24.51},
+      {"id":"8","x":19.84,"y":32.61},
+      {"id":"9","x":36.96,"y":32.61},
+      {"id":"10","x":61.09,"y":33.49},
+      {"id":"11","x":77.04,"y":33.49},
+      {"id":"12","x":92.22,"y":34.36},
+      {"id":"13","x":19.84,"y":40.71},
+      {"id":"14","x":37.74,"y":40.27},
+      {"id":"15","x":61.87,"y":43.56},
+      {"id":"16","x":77.04,"y":43.56},
+      {"id":"17","x":91.44,"y":43.56},
+      {"id":"18","x":11.28,"y":53.63},
+      {"id":"19","x":27.63,"y":53.63},
+      {"id":"20","x":41.36,"y":53.6},
+      {"id":"21","x":61.26,"y":53.45},
+      {"id":"22","x":75.1,"y":53.41},
+      {"id":"23","x":91.05,"y":53.63},
+      {"id":"24","x":11.28,"y":62.6},
+      {"id":"25","x":26.85,"y":62.38},
+      {"id":"26","x":41.88,"y":62.88},
+      {"id":"27","x":60.73,"y":63.02},
+      {"id":"28","x":75.92,"y":62.88},
+      {"id":"29","x":91.88,"y":62.73},
+      {"id":"30","x":11.7,"y":71.11},
+      {"id":"31","x":26.79,"y":71.32},
+      {"id":"32","x":42.67,"y":71.42},
+      {"id":"33","x":60.99,"y":70.83},
+      {"id":"34","x":75.39,"y":70.98},
+      {"id":"35","x":91.62,"y":70.53},
+      {"id":"36","x":12.08,"y":79.39},
+      {"id":"37","x":27.55,"y":78.96},
+      {"id":"38","x":42.67,"y":79.07},
+      {"id":"39","x":61.26,"y":79.81},
+      {"id":"40","x":76.18,"y":79.22},
+      {"id":"41","x":91.62,"y":79.66},
+      {"id":"42","x":27.37,"y":86.75},
+      {"id":"43","x":43.73,"y":86.46},
+      {"id":"44","x":59.85,"y":86.89},
+      {"id":"45","x":75.45,"y":87.04}
     ];
 
     function isMobileLayout() {
@@ -816,8 +467,8 @@
     }
 
     function getCurrentHotspots() {
-  return isMobileLayout() ? PORTRAIT_HOTSPOTS : HOTSPOTS;
-}
+      return isMobileLayout() ? PORTRAIT_HOTSPOTS : HOTSPOTS;
+    }
 
     const ALL_IDS = [
       "VIP 1","VIP 2","3","4","5","6","7","8","9","10","11","12",
@@ -846,10 +497,11 @@
     const toggleEdit = document.getElementById("toggleEdit");
 
     if (isDebug) document.body.classList.add("debug");
+
     if (isEdit) {
-  editPanel.classList.add("open");
-  document.body.classList.add("editing");
-}
+      editPanel.classList.add("open");
+      document.body.classList.add("editing");
+    }
 
     toggleEdit?.addEventListener("click", () => {
       editPanel.classList.toggle("minimized");
@@ -863,84 +515,59 @@
     let tableToNames = {};
     let allGuests = [];
 
-    function normalizeHeader(h) {
-      return String(h || "").trim().toLowerCase();
-    }
-
-    function parseCSV(text) {
-      const rows = [];
-      let row = [];
-      let cur = "";
-      let inQuotes = false;
-
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        const next = text[i + 1];
-
-        if (ch === '"' && inQuotes && next === '"') {
-          cur += '"';
-          i++;
-        } else if (ch === '"') {
-          inQuotes = !inQuotes;
-        } else if (ch === "," && !inQuotes) {
-          row.push(cur);
-          cur = "";
-        } else if ((ch === "\n" || ch === "\r") && !inQuotes) {
-          if (ch === "\r" && next === "\n") i++;
-          row.push(cur);
-          cur = "";
-          if (row.some(c => String(c).trim() !== "")) rows.push(row);
-          row = [];
-        } else {
-          cur += ch;
-        }
-      }
-
-      if (cur.length || row.length) {
-        row.push(cur);
-        if (row.some(c => String(c).trim() !== "")) rows.push(row);
-      }
-
-      return rows;
-    }
-
     async function loadSheet() {
-      const res = await fetch(`${CSV_URL}&_ts=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to load CSV");
+      const res = await fetch(`${WEB_APP_URL}&_ts=${Date.now()}`, {
+        cache: "no-store"
+      });
 
-      const text = await res.text();
-      const rows = parseCSV(text);
-      if (!rows.length) return;
+      if (!res.ok) throw new Error("Failed to load guest list");
 
-      const headers = rows[0].map(normalizeHeader);
-      const tableIdx = headers.findIndex(h => h === "table" || h === "table no" || h === "tableno");
-      const nameIdx = headers.findIndex(h => h === "guestname" || h === "guest name" || h === "name");
+      const data = await res.json();
 
-      if (tableIdx === -1 || nameIdx === -1) {
-        alert("Your Sheet headers must include: Table No and Guest Name.");
-        return;
+      if (!data.ok) {
+        throw new Error("Apps Script returned an error");
       }
 
       const map = {};
       const guests = [];
 
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        const t = String(r[tableIdx] || "").trim();
-        const n = String(r[nameIdx] || "").trim().replace(/\s+/g, " ");
-        if (!t || !n) continue;
+      data.guests.forEach(g => {
+        const tableId = String(g.table || "").trim();
+        const name = String(g.name || "").trim().replace(/\s+/g, " ");
+        const checkedIn = g.checkedIn === true;
 
-        const tableId = t.replace(/\s+/g, " ").toUpperCase().startsWith("VIP")
-          ? t.replace(/\s+/g, " ").toUpperCase().replace("VIP", "VIP ").replace(/\s+/g, " ").trim()
-          : t;
+        if (!tableId || !name) return;
+
+        const guest = {
+          name,
+          table: tableId,
+          checkedIn
+        };
 
         if (!map[tableId]) map[tableId] = [];
-        map[tableId].push(n);
-        guests.push({ name: n, table: tableId });
-      }
+        map[tableId].push(guest);
+        guests.push(guest);
+      });
 
       tableToNames = map;
       allGuests = guests;
+    }
+
+    async function updateGuestCheckIn(guest, checkedIn) {
+      guest.checkedIn = checkedIn;
+
+      await fetch(WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify({
+          guestName: guest.name,
+          table: guest.table,
+          checkedIn: checkedIn
+        })
+      });
     }
 
     function buildHotspots() {
@@ -972,14 +599,14 @@
     }
 
     function openTable(id) {
-      const names = tableToNames[id] || [];
-      const count = names.length;
+      const guests = tableToNames[id] || [];
+      const count = guests.length;
 
       popupTitle.textContent = `Table ${id} (${count} / 10 pax)`;
       popup.classList.add("open");
       closePopupBtn.style.display = "inline-block";
       tableSearch.value = "";
-      renderTableList(names);
+      renderTableList(guests);
     }
 
     function closeTable() {
@@ -987,10 +614,10 @@
       closePopupBtn.style.display = "none";
     }
 
-    function renderTableList(names) {
+    function renderTableList(guests) {
       tableList.innerHTML = "";
 
-      if (!names.length) {
+      if (!guests.length) {
         const div = document.createElement("div");
         div.className = "empty";
         div.textContent = "No guests found for this table (check your Sheet).";
@@ -998,19 +625,45 @@
         return;
       }
 
-      names.forEach(n => {
+      guests.forEach(guest => {
         const item = document.createElement("div");
         item.className = "item";
-        item.textContent = n;
+        item.style.cursor = "pointer";
+        item.textContent = `${guest.name} ${guest.checkedIn ? "☑" : "☐"}`;
+
+        if (guest.checkedIn) {
+          item.classList.add("checked");
+        }
+
+        item.addEventListener("click", async (e) => {
+          e.stopPropagation();
+
+          const oldStatus = guest.checkedIn;
+          const newStatus = !guest.checkedIn;
+
+          guest.checkedIn = newStatus;
+          item.textContent = `${guest.name} ${newStatus ? "☑" : "☐"}`;
+          item.classList.toggle("checked", newStatus);
+
+          try {
+            await updateGuestCheckIn(guest, newStatus);
+          } catch (err) {
+            guest.checkedIn = oldStatus;
+            item.textContent = `${guest.name} ${oldStatus ? "☑" : "☐"}`;
+            item.classList.toggle("checked", oldStatus);
+            alert("Could not update check-in. Please try again.");
+          }
+        });
+
         tableList.appendChild(item);
       });
     }
 
     tableSearch.addEventListener("input", () => {
       const title = popupTitle.textContent.replace("Table ", "").split(" (")[0].trim();
-      const names = tableToNames[title] || [];
+      const guests = tableToNames[title] || [];
       const q = tableSearch.value.trim().toLowerCase();
-      const filtered = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+      const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
       renderTableList(filtered);
     });
 
@@ -1057,8 +710,12 @@
       matches.slice(0, 50).forEach(m => {
         const item = document.createElement("div");
         item.className = "item";
-        item.textContent = `${m.name} — Table ${m.table}`;
+        item.textContent = `${m.name} ${m.checkedIn ? "☑" : "☐"} — Table ${m.table}`;
         item.style.cursor = "pointer";
+
+        if (m.checkedIn) {
+          item.classList.add("checked");
+        }
 
         item.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -1147,7 +804,8 @@
       try {
         await loadSheet();
       } catch (e) {
-        alert("Could not load Google Sheet CSV. Please check your link and internet.");
+        console.log(e);
+        alert("Could not load guest list. Please check your Apps Script Web App URL and deployment settings.");
       }
 
       buildHotspots();
@@ -1158,20 +816,24 @@
           await loadSheet();
           buildHotspots();
 
+          const gq = globalSearch.value.trim().toLowerCase();
+
+          if (gq) {
+            globalSearch.dispatchEvent(new Event("input"));
+            return;
+          }
+
           if (popup.classList.contains("open")) {
             const currentTitle = popupTitle.textContent.replace("Table ", "").split(" (")[0].trim();
 
             if (tableToNames[currentTitle]) {
               const q = tableSearch.value.trim().toLowerCase();
-              const names = tableToNames[currentTitle] || [];
-              const filtered = q ? names.filter(n => n.toLowerCase().includes(q)) : names;
+              const guests = tableToNames[currentTitle] || [];
+              const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
 
-              popupTitle.textContent = `Table ${currentTitle} (${names.length} / 10 pax)`;
+              popupTitle.textContent = `Table ${currentTitle} (${guests.length} / 10 pax)`;
               renderTableList(filtered);
             }
-
-            const gq = globalSearch.value.trim().toLowerCase();
-            if (gq) globalSearch.dispatchEvent(new Event("input"));
           }
         } catch (e) {
           console.log("Auto-refresh failed", e);
