@@ -339,17 +339,18 @@
     </div>
   </div>
 
-  <div class="popup" id="popup">
-    <div class="phead">
-      <b id="popupTitle">Table</b>
-      <div class="spacer"></div>
-      <button id="popupClose">Close</button>
-    </div>
-    <div class="pbody">
-      <input class="search" id="tableSearch" placeholder="Search within this table..." />
-      <div class="list" id="tableList"></div>
-    </div>
+<div class="popup" id="popup">
+  <div class="phead">
+    <b id="popupTitle">Table</b>
+    <div class="spacer"></div>
+    <button id="selectAllBtn" style="display:none;">Select All</button>
+    <button id="popupClose">Close</button>
   </div>
+  <div class="pbody">
+    <input class="search" id="tableSearch" placeholder="Search within this table..." />
+    <div class="list" id="tableList"></div>
+  </div>
+</div>
 
   <div class="editPanel" id="editPanel">
     <div class="editRow">
@@ -462,20 +463,6 @@
     {"id":"45","x":75.45,"y":87.04}
   ];
 
-  function isMobileLayout() {
-    return window.matchMedia("(max-width: 600px)").matches;
-  }
-
-  function getCurrentHotspots() {
-    return isMobileLayout() ? PORTRAIT_HOTSPOTS : HOTSPOTS;
-  }
-
-  function addCacheBuster(url) {
-    return url.includes("?")
-      ? `${url}&_ts=${Date.now()}`
-      : `${url}?_ts=${Date.now()}`;
-  }
-
   const ALL_IDS = [
     "VIP 1","VIP 2","3","4","5","6","7","8","9","10","11","12",
     "13","14","15","16","17","18","19","20","21","22","23","24",
@@ -493,6 +480,7 @@
   const tableSearch = document.getElementById("tableSearch");
   const tableList = document.getElementById("tableList");
   const popupClose = document.getElementById("popupClose");
+  const selectAllBtn = document.getElementById("selectAllBtn");
   const closePopupBtn = document.getElementById("closePopupBtn");
   const globalSearch = document.getElementById("globalSearch");
   const editPanel = document.getElementById("editPanel");
@@ -502,6 +490,10 @@
   const doneBtn = document.getElementById("doneBtn");
   const toggleEdit = document.getElementById("toggleEdit");
 
+  let tableToNames = {};
+  let allGuests = [];
+  let currentTableId = null;
+
   if (isDebug) document.body.classList.add("debug");
 
   if (isEdit) {
@@ -509,22 +501,27 @@
     document.body.classList.add("editing");
   }
 
-  let tableToNames = {};
-  let allGuests = [];
+  if (selectAllBtn) {
+    selectAllBtn.style.background = "#e8f5e9";
+    selectAllBtn.style.color = "#1b5e20";
+  }
 
-  toggleEdit?.addEventListener("click", () => {
-    editPanel.classList.toggle("minimized");
+  function isMobileLayout() {
+    return window.matchMedia("(max-width: 600px)").matches;
+  }
 
-    toggleEdit.textContent =
-      editPanel.classList.contains("minimized")
-        ? "EDIT MODE ▲"
-        : "EDIT MODE ▼";
-  });
+  function getCurrentHotspots() {
+    return isMobileLayout() ? PORTRAIT_HOTSPOTS : HOTSPOTS;
+  }
+
+  function addCacheBuster(url) {
+    return url.includes("?")
+      ? `${url}&_ts=${Date.now()}`
+      : `${url}?_ts=${Date.now()}`;
+  }
 
   async function loadSheet() {
-    const url = addCacheBuster(WEB_APP_URL);
-
-    const res = await fetch(url, {
+    const res = await fetch(addCacheBuster(WEB_APP_URL), {
       method: "GET",
       cache: "no-store"
     });
@@ -532,6 +529,7 @@
     const text = await res.text();
 
     let data;
+
     try {
       data = JSON.parse(text);
     } catch (err) {
@@ -561,6 +559,7 @@
       };
 
       if (!map[tableId]) map[tableId] = [];
+
       map[tableId].push(guest);
       guests.push(guest);
     });
@@ -586,6 +585,12 @@
     });
   }
 
+  async function updateWholeTable(guests, checkedIn) {
+    for (const guest of guests) {
+      await updateGuestCheckIn(guest, checkedIn);
+    }
+  }
+
   function buildHotspots() {
     canvas.querySelectorAll(".hotspot").forEach(el => el.remove());
 
@@ -604,7 +609,9 @@
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
+
         if (isEdit) return;
+
         openTable(h.id);
       });
 
@@ -613,19 +620,48 @@
   }
 
   function openTable(id) {
+    currentTableId = id;
+
     const guests = tableToNames[id] || [];
     const count = guests.length;
 
     popupTitle.textContent = `Table ${id} (${count} / 10 pax)`;
     popup.classList.add("open");
     closePopupBtn.style.display = "inline-block";
+    selectAllBtn.style.display = "inline-block";
+
     tableSearch.value = "";
+    updateSelectAllButton();
     renderTableList(guests);
   }
 
   function closeTable() {
     popup.classList.remove("open");
     closePopupBtn.style.display = "none";
+    selectAllBtn.style.display = "none";
+    currentTableId = null;
+  }
+
+  function updateSelectAllButton() {
+    if (!currentTableId) {
+      selectAllBtn.style.display = "none";
+      return;
+    }
+
+    const guests = tableToNames[currentTableId] || [];
+
+    if (!guests.length) {
+      selectAllBtn.textContent = "Select All";
+      selectAllBtn.disabled = true;
+      selectAllBtn.style.opacity = "0.6";
+      return;
+    }
+
+    const allChecked = guests.every(g => g.checkedIn === true);
+
+    selectAllBtn.disabled = false;
+    selectAllBtn.style.opacity = "1";
+    selectAllBtn.textContent = allChecked ? "Untick All" : "Select All";
   }
 
   function renderTableList(guests) {
@@ -636,6 +672,7 @@
       div.className = "empty";
       div.textContent = "No guests found for this table.";
       tableList.appendChild(div);
+      updateSelectAllButton();
       return;
     }
 
@@ -658,6 +695,7 @@
         guest.checkedIn = newStatus;
         item.textContent = `${guest.name} ${newStatus ? "☑" : "☐"}`;
         item.classList.toggle("checked", newStatus);
+        updateSelectAllButton();
 
         try {
           await updateGuestCheckIn(guest, newStatus);
@@ -665,20 +703,65 @@
           guest.checkedIn = oldStatus;
           item.textContent = `${guest.name} ${oldStatus ? "☑" : "☐"}`;
           item.classList.toggle("checked", oldStatus);
+          updateSelectAllButton();
           alert("Could not update check-in. Please try again.");
         }
       });
 
       tableList.appendChild(item);
     });
+
+    updateSelectAllButton();
   }
 
   tableSearch.addEventListener("input", () => {
-    const title = popupTitle.textContent.replace("Table ", "").split(" (")[0].trim();
-    const guests = tableToNames[title] || [];
+    const guests = currentTableId ? (tableToNames[currentTableId] || []) : [];
     const q = tableSearch.value.trim().toLowerCase();
     const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
+
     renderTableList(filtered);
+  });
+
+  selectAllBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+
+    if (!currentTableId) return;
+
+    const guests = tableToNames[currentTableId] || [];
+    if (!guests.length) return;
+
+    const oldStatuses = guests.map(g => g.checkedIn);
+    const allChecked = guests.every(g => g.checkedIn === true);
+    const newStatus = !allChecked;
+
+    guests.forEach(g => {
+      g.checkedIn = newStatus;
+    });
+
+    const q = tableSearch.value.trim().toLowerCase();
+    const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
+
+    renderTableList(filtered);
+
+    selectAllBtn.disabled = true;
+    selectAllBtn.style.opacity = "0.6";
+    selectAllBtn.textContent = newStatus ? "Ticking..." : "Unticking...";
+
+    try {
+      await updateWholeTable(guests, newStatus);
+    } catch (err) {
+      guests.forEach((g, index) => {
+        g.checkedIn = oldStatuses[index];
+      });
+
+      const revertedFiltered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
+      renderTableList(revertedFiltered);
+
+      alert("Could not update all guests. Please refresh and try again.");
+    } finally {
+      selectAllBtn.disabled = false;
+      updateSelectAllButton();
+    }
   });
 
   popupClose.addEventListener("click", closeTable);
@@ -703,6 +786,9 @@
       closeTable();
       return;
     }
+
+    currentTableId = null;
+    selectAllBtn.style.display = "none";
 
     const matches = allGuests.filter(g => g.name.toLowerCase().includes(q));
 
@@ -733,6 +819,7 @@
 
       item.addEventListener("click", (e) => {
         e.stopPropagation();
+
         openTable(m.table);
         tableSearch.value = m.name;
         tableSearch.dispatchEvent(new Event("input"));
@@ -823,6 +910,7 @@
     }
 
     buildHotspots();
+
     if (isEdit) updateCoordsBox();
 
     setInterval(async () => {
@@ -837,17 +925,13 @@
           return;
         }
 
-        if (popup.classList.contains("open")) {
-          const currentTitle = popupTitle.textContent.replace("Table ", "").split(" (")[0].trim();
+        if (popup.classList.contains("open") && currentTableId) {
+          const guests = tableToNames[currentTableId] || [];
+          const q = tableSearch.value.trim().toLowerCase();
+          const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
 
-          if (tableToNames[currentTitle]) {
-            const q = tableSearch.value.trim().toLowerCase();
-            const guests = tableToNames[currentTitle] || [];
-            const filtered = q ? guests.filter(g => g.name.toLowerCase().includes(q)) : guests;
-
-            popupTitle.textContent = `Table ${currentTitle} (${guests.length} / 10 pax)`;
-            renderTableList(filtered);
-          }
+          popupTitle.textContent = `Table ${currentTableId} (${guests.length} / 10 pax)`;
+          renderTableList(filtered);
         }
       } catch (e) {
         console.log("Auto-refresh failed", e);
